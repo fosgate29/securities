@@ -17,23 +17,19 @@ contract OnChainVoting is Ownable {
     uint256 result;
     uint endTime;
 
-    address votingAdmin;
-
     // Security Token
     IERC20 public securityToken;
 
     constructor(
         IERC20 _securityToken, 
         address _issuer, 
-        address _votingAdmin,
         uint _endTime
     ) 
         public 
     {
-        require(_securityToken != address(0), "Token addresses cannot be zero.");
+        require(_securityToken != address(0), "Token address cannot be zero.");
 
         securityToken = _securityToken;
-        votingAdmin = _votingAdmin;
         endTime = _endTime;
         transferOwnership(_issuer);
     }
@@ -42,11 +38,9 @@ contract OnChainVoting is Ownable {
     /**********************************************
 	* @dev function for every token holder to submit their vote
 	* @param _encVote Encrypted userSalt concatenated with their vote, encrypted with votingAdmin's public key
-    * @param _sig 
     **********************************************/
     function placeVote(
-        bytes _encVote, 
-        bytes _sig
+        bytes _encVote
     ) 
         public  
     {

@@ -21,7 +21,7 @@ contract OnChainPayments is Ownable {
     }
 
 
-    event PaymentAllocated(address _securityHolder, uint256 index, uint256 _paymentValue);
+    event PaymentAllocated(address _securityHolder, uint256 _index, uint256 _paymentValue);
     event PaymentChallenged(address _securityHolder, uint256 _index, uint256 _suggestedValue);
     event PaymentUpdated(address _securityHolder, uint256 _index, uint256 _oldValue, uint256 _newValue);
     event PaymentResolved(address _securityHolder, uint256 _index, bool _paymentChanged);
@@ -38,6 +38,11 @@ contract OnChainPayments is Ownable {
     //Address of security token, required for checking the balance of security tokens per holder
     IERC20 public securityToken;
     IERC20 public paymentToken; 
+
+    modifier indexInRange(address _payee, uint256 _index) {
+        require(payments[_payee].length > _index && _index >= 0, "Payment index not in range for message sender");
+        _;
+    }
 
     /**
 	* @dev Constructor to initialize the contract.
@@ -70,10 +75,10 @@ contract OnChainPayments is Ownable {
             require(securitiesOwned > 0, "Holder does not own any securities.");
             uint256 paymentOwed = securitiesOwned.mul(_paymentPerSecurity);
 
-            payments[_securityHolders[i]].push(Payment(now, paymentOwed, ChallengeState.NoChallenge));
-            paymentToken.transferFrom(issuer, _securityHolders[i], paymentOwed);
+            payments[_securityHolders[i]].push(Payment(now, paymentOwed, ChallengeState.NotChallenged));
+            paymentToken.transferFrom(owner(), _securityHolders[i], paymentOwed);
 
-            emit PaymentAllocated(_securityHolders[i], paymentOwed);
+            emit PaymentAllocated(_securityHolders[i], payments[_securityHolders[i]].length-1, paymentOwed);
         }
     }
 
@@ -95,10 +100,10 @@ contract OnChainPayments is Ownable {
         Payment[] memory holderPayments = payments[_securityHolder];
         require (holderPayments.length > 0, "holder has no payment history");
 
-        for (int256 i = holderPayments.length-1; i >= 0; i--){
+        for (uint256 i = holderPayments.length-1; i >= 0; i--){
             if (holderPayments[i].timestamp == _timestamp && holderPayments[i].value == _value)
             {
-                return i;
+                return int256(i);
             } 
         }
         return DOESNT_EXIST;
@@ -106,55 +111,50 @@ contract OnChainPayments is Ownable {
 
     /**
 	* @dev Allows a security holder to challenge a payment they have received. 
-	* @param _holder Address of holder to check Payment.  
     * @param _index Position of Payment in array of user Payments to check.
-    * @param _sig Returned data from signature of hash of the (holder and index). 
+    * @param _suggestedValue Returned data from signature of hash of the (holder and index). 
     */
-    function challengePayment(uint256 _timestamp, uint256 _currentValue, uint256 _suggestedValue) public {        
-        int256 paymentIndex = lookUpPaymentIndex(msg.sender, _timestamp, _currentValue);
-        require(paymentIndex >= 0, "Payment does not exist for provided hash");
-        
-        require(payments[msg.sender][paymentIndex].state == ChallengeState.NotChallenged, "Payment previously challenged.");
-        require(payments[msg.sender][paymentIndex].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
-        payments[msg.sender][paymentIndex].state = ChallengeState.Challenged;
+    function challengePayment(uint256 _index, uint256 _suggestedValue) public indexInRange(msg.sender, _index) {        
+        require(payments[msg.sender][_index].state == ChallengeState.NotChallenged, "Payment previously challenged.");
+        require(payments[msg.sender][_index].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
+        payments[msg.sender][_index].state = ChallengeState.Challenged;
 
-        emit PaymentChallenged(msg.sender, _timestamp, _currentValue, _suggestedValue);
+        emit PaymentChallenged(msg.sender, _index, _suggestedValue);
     }
 
     /**
 	* @dev Allows issuer to resolve the Payment record that has been challenged. 
-	* @param _holder Address of holder to resolve Payment.  
+	* @param _securityHolder Address of holder to resolve Payment.  
     * @param _index Position of Payment in array of user Payment to resolve. 
     * @param _newValue New, corrected value for the Payment.
     */
     function resolveChallenge(
         address _securityHolder, 
-        uint256 _timestamp,
-        uint256 _currentValue,
+        uint256 _index,
         uint256 _newValue
     ) 
         public 
-        onlyOwner 
+        onlyOwner
+        indexInRange(_securityHolder, _index)
     {    
-        int256 paymentIndex = lookUpPaymentIndex(msg.sender, timestamp, _currentValue);
-        require(paymentIndex >= 0, "Payment does not exist for provided hash");
+        uint256 currentValue = payments[_securityHolder][_index].value;
         bool updated = true;
-        if (_newValue == _currentValue) {
+        if (currentValue == _newValue) {
             updated = false;
-        } else if (_newValue > _currentValue) {
-            emit PaymentUpdated(_securityHolder, paymentIndex, _currentValue, _newValue);
+        } else if (_newValue > currentValue) {
+            emit PaymentUpdated(_securityHolder, _index, currentValue, _newValue);
 
-            payments[_securityHolder][paymentIndex].value = _newValue;
+            payments[_securityHolder][_index].value = _newValue;
 
-            uint256 paymentOwed = _newValue.sub(_currentValue);
-            paymentToken.transferFrom(owner, _securityHolder, paymentOwed);
+            uint256 paymentOwed = _newValue.sub(currentValue);
+            paymentToken.transferFrom(owner(), _securityHolder, paymentOwed);
         } else {
-            emit PaymentUpdated(_securityHolder, paymentIndex, _currentValue, _newValue);
-            payments[_securityHolder][paymentIndex].value = _newValue;
+            emit PaymentUpdated(_securityHolder, _index, currentValue, _newValue);
+            payments[_securityHolder][_index].value = _newValue;
         }
 
-        payments[_securityHolder][paymentIndex].state = ChallengeState.Resolved;
-        emit PaymentResolved(_securityHolder, updated);
+        payments[_securityHolder][_index].state = ChallengeState.Resolved;
+        emit PaymentResolved(_securityHolder, _index, updated);
     }
  
 }

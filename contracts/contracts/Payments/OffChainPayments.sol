@@ -12,8 +12,8 @@ contract OffChainPayments is Ownable {
     enum ChallengeState { NotChallenged, Challenged, Resolved }
 
     struct Payment {
-        // off-chian payment made at this time
-        uint256 time;
+        // off-chian payment made at this timestamp
+        uint256 timestamp;
         // Value of the payment made
         uint256 value;
         //Hash of wireID, value, receiver, sender, date
@@ -22,10 +22,10 @@ contract OffChainPayments is Ownable {
         ChallengeState state; 
     }
 
-    event PaymentRecorded(address _recipient, uint256 _value, bytes32 _offchainPaymentHash);
-    event PaymentChallenged(address _recipient, bytes32 _offchainPaymentHash, uint256 _oldValue, uint256 _suggestedValue);
-    event PaymentResolved(address _recipient, bool _paymentChanged);
-    event PaymentUpdated(address _recipient, uint256 _oldValue, bytes32 _oldHash, uint256 _newValue, bytes32 _newHash);
+    event PaymentRecorded(address _securityHolder, uint256 _value, bytes32 _offchainPaymentHash);
+    event PaymentChallenged(address _securityHolder, bytes32 _offchainPaymentHash, uint256 _oldValue, uint256 _suggestedValue);
+    event PaymentResolved(address _securityHolder, bool _paymentChanged);
+    event PaymentUpdated(address _securityHolder, uint256 _oldValue, bytes32 _oldHash, uint256 _newValue, bytes32 _newHash);
     
     //Challenge period set to two weeks
     uint256 public constant CHALLENGE_PERIOD = 2 weeks;
@@ -52,50 +52,52 @@ contract OffChainPayments is Ownable {
     
     /**
 	* @dev Allows issuer to record payment to security holders.
-	* @param _holders Array of addresses that are security token holders. 
+	* @param _securityHolders Array of addresses that are security token holders. 
     * @param _paymentPerSecurity The Payments per security or security token, used to calcuate total Payments owed. 
-    * @param _paymentTimes The times each of the payments were made at.    
+    * @param _paymentTimestamps The timestamps each of the payments were made at.    
 	* @param _offchainPayments Array of hashes of (wire#, value, receiver, sender, date) - proposed info.
     * To Do - Ensure decimal places of USD or units. 
     */
     function recordPayments(
-        address[] _holders, 
+        address[] _securityHolders, 
         uint256 _paymentPerSecurity, 
-        uint256[] _paymentTimes,
+        uint256[] _paymentTimestamps,
         bytes32[] _offchainPaymentHashes
     ) 
         public 
         onlyOwner 
     {
-        require(_holders.length > 0, "Empty array cannot be submitted.");
+        require(_securityHolders.length > 0, "Empty array cannot be submitted.");
         require(_paymentPerSecurity > 0, "No payment per security designated.");
-        require(_holders.length == _offchainPayments.length == _paymentTimes.length, "Arrays must be the same length.");
+        require(_securityHolders.length == _offchainPayments.length == _paymentTimestamps.length, "Arrays must be the same length.");
 
-        for (uint256 i = 0; i < _holders.length; i++){
-            uint256 securitiesOwned = securityToken.balanceOf(_holders[i]);
+        for (uint256 i = 0; i < _securityHolders.length; i++){
+            uint256 securitiesOwned = securityToken.balanceOf(_securityHolders[i]);
             require(securitiesOwned > 0, "Holder does not own any securities.");
             uint256 paymentValue = securitiesOwned.mul(_paymentPerSecurity);
 
-            payments[_holders[i]].push(Payment(_paymentTimes[i], paymentValue, _offchainPaymentHashes[i], ChallengeState.NotChallenged));
-            emit PaymentRecorded(_holders[i], valueOwed, _offchainPayments[i]);
+            payments[_securityHolders[i]].push(
+                Payment(_paymentTimestamps[i], paymentValue, _offchainPaymentHashes[i], ChallengeState.NotChallenged)
+            );
+            emit PaymentRecorded(_securityHolders[i], valueOwed, _offchainPayments[i]);
         }
     }
 
     /**
 	* @dev Allows the front end to calculate the index based on the offchainPayment and holder information. 
-    * @param _holder The address whom the payment was for
-    * @param _offchainPayment Hashed data offchainPayment of Payments. 
+    * @param _securityHolder The address whom the payment was for
+    * @param _offchainPaymentHash Hashed data of offchain payment. 
     * @return The index of the offchainPayment for the respective security token holder.  
     */
-    function lookUpPaymentIndex(address _holder, bytes32 _offchainPaymentHash)
+    function lookUpPaymentIndex(address _securityHolder, bytes32 _offchainPaymentHash)
         public
         view
         returns(int256)
     {
         require(_offchainPaymentHash != bytes32(0), "No offchainPayment hash provided.");
-        require(_holder != address(0));
+        require(_securityHolder != address(0), "No security holder address provided");
 
-        Payment[] memory holderPayments = payments[_holder];
+        Payment[] memory holderPayments = payments[_securityHolder];
         require (holderPayments.length > 0, "holder has no payment history");
 
         for (int256 i = holderPayments.length-1; i >= 0; i--){
@@ -110,28 +112,29 @@ contract OffChainPayments is Ownable {
     /**
 	* @dev Allows issuer to challenge the Payments behalf of a security holder. 
     * @param _offchainPaymentHash Hashed data offchainPayment of Payments. 
-    * @param _newSuggestedValue The value that the holder suggests would be correct. 
+    * @param _suggestedValue The value that the holder suggests would be correct. 
     */
-    function challengePayment(bytes32 _offchainPaymentHash, uint256 _newSuggestedValue) public {
+    function challengePayment(bytes32 _offchainPaymentHash, uint256 _suggestedValue) public {
         int256 paymentIndex = lookUpPaymentIndex(msg.sender, _offchainPaymentHash);
         require(paymentIndex >= 0, "Payment does not exist for provided hash");
         
-        require(payments[msg.sender][paymentIndex].time.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
+        require(payments[msg.sender][paymentIndex].state == ChallengeState.NotChallenged);
+        require(payments[msg.sender][paymentIndex].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
         payments[msg.sender][paymentIndex].state = ChallengeState.Challenged;
 
-        emit PaymentChallenged(msg.sender, _offchainPaymentHash, payments[msg.sender][paymentIndex].value, _newSuggestedValue);
+        emit PaymentChallenged(msg.sender, _offchainPaymentHash, payments[msg.sender][paymentIndex].value, _suggestedValue);
     }
 
     /**
 	* @dev Allows issuer to resolve the Payments offchainPayment that has been challenged. 
-	* @param _holder Address of holder to resolve Payments.  
+	* @param _securityHolder Address of holder to resolve Payments.  
     * @param _offchainPaymentHash Position of Payments in array of user payment to resolve.
     * @param _updateNeeded Whether the value has changed and a new payment exists
     * @param _newPaymentHash New hash of corrected (wire#, value, receiver, sender, date).
     * @param _newValue New, corrected value for the Payments. Will need to be handled offchain. 
     */
     function resolveChallenge(
-        address _holder, 
+        address _securityHolder, 
         bytes32 _offchainPaymentHash, 
         bool _updateNeeded,
         bytes32 _newPaymentHash,
@@ -147,20 +150,20 @@ contract OffChainPayments is Ownable {
             require(_newOffchainPayment != bytes32(0), "No offchainPayment hash provided."); 
             
             emit PaymentUpdated(
-                _holder,
-                payments[_holder][paymentIndex].value,
-                payments[_holder][paymentIndex].offchainPaymentHash,
+                _securityHolder,
+                payments[_securityHolder][paymentIndex].value,
+                payments[_securityHolder][paymentIndex].offchainPaymentHash,
                 _newValue,
                 _newPaymentHash
             );
 
-            payments[_holder][paymentIndex].value = _newValue;
-            payments[_holder][paymentIndex].offchainPaymentHash = _newPaymentHash; 
+            payments[_securityHolder][paymentIndex].value = _newValue;
+            payments[_securityHolder][paymentIndex].offchainPaymentHash = _newPaymentHash; 
 
         }
-        payments[_holder][paymentIndex].state = ChallengeState.Resolved;
+        payments[_securityHolder][paymentIndex].state = ChallengeState.Resolved;
 
-        emit PaymentResolved(_holder, _updateNeeded);
+        emit PaymentResolved(_securityHolder, _updateNeeded);
     }
 
 }

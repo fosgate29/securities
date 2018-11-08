@@ -10,12 +10,13 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
  * More info about them is available here: https://github.com/OpenZeppelin/zeppelin-solidity/tree/master/contracts/token/ERC20
  */
 contract Token is ERC20, Ownable {
+    using SafeMath for uint256;
 
     address redemption;
 
-    modifier onlyRedemption {
+    modifier onlyRedemptionOrOwner {
         require(redemption != address(0), "No redemption contract set");
-        require(msg.sender == redemption, "Only redemption contract can call this function");
+        require(msg.sender == redemption || msg.sender == owner(), "Only redemption or owner contract can call this function");
         _;
     }
 
@@ -35,11 +36,29 @@ contract Token is ERC20, Ownable {
         redemption = _redemption;
     }
 
-    function redeemAllTokens(address _holder) external onlyRedemption {
+    function redeemAllTokensList(address[] _holders) external onlyRedemptionOrOwner {
+        require(_holders.length > 0, "List of holders empty");
+        for (uint256 i = 0; i < _holders.length; i++) {
+            redeemAllTokens(_holders[i]);
+        }
+    }
+
+    function redeemAllTokens(address _holder) public onlyRedemptionOrOwner {
         uint256 balance = balances[_holder];
         require(balance > 0, "Holder has no tokens");
         emit Transfer(_holder, owner(), balance);
-        balances[owner()] = balance;
+        balances[owner()] += balance;
         balances[_holder] = 0;
     }
+
+    function redeemPartialTokens(address _holder, uint256 _number) external onlyOwnerOrRedemption {
+        uint256 balance = balances[_holder];
+
+        require(balance >= _number, "Holder does not own sufficient tokens");
+        emit Transfer(_holder, owner(), _number);
+        balances[owner] += _number;
+        balances[_holder] -= _number;
+    }
+
+
 }

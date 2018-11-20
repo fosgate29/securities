@@ -22,16 +22,29 @@ contract OffChainPayments is Ownable {
         ChallengeState state; 
     }
 
-    event PaymentRecorded(address indexed _securityHolder, uint256 indexed _index, uint256 _value, bytes32 _offchainPaymentHash);
-    event PaymentChallenged(address indexed _securityHolder, uint256 indexed _index, uint256 _suggestedValue);
-    event PaymentResolved(address indexed _securityHolder, uint256 indexed _index, bool _paymentChanged);
-    event PaymentUpdated(address indexed _securityHolder, uint256 indexed _index, uint256 _newValue, bytes32 _newHash);
+    event Payment(
+        address indexed _securityHolder,
+        uint256 indexed _index,
+        uint256 indexed _eventType,
+        uint256 _value,
+        bytes32 _offchainPaymentHash
+    );
     
+    // event types for the Payment event
+    uint256 public constant CREATED = 1;
+    uint256 public constant CHALLENGED = 2;
+    uint256 public constant RESOLVED_NO_CHANGE = 3;
+    uint256 public constant RESOLVED_CHANGED = 4;
+
     //Challenge period set to two weeks
     uint256 public constant CHALLENGE_PERIOD = 2 weeks;
     
     //Number not available in array
     int256 public constant DOESNT_EXIST = -1;   
+    bytes32 public constant NO_HASH;
+    uint256 public constant NO_NEW_VALUE;
+
+
 
     //The payments each security holder has received
     mapping(address => Payment[]) public payments;
@@ -75,7 +88,7 @@ contract OffChainPayments is Ownable {
         require(_securityHolders.length > 0, "Empty array cannot be submitted.");
         require(_paymentPerSecurity > 0, "No payment per security designated.");
         require(
-            (_securityHolders.length == _offchainPaymentHashes.length) && (_offchainPaymentHashes.length == _paymentTimestamps.length),
+            (_securityHolders.length == _offchainPaymentHashes.length) && (_securityHolders.length == _paymentTimestamps.length),
             "Arrays must be the same length."
         );
         for (uint256 i = 0; i < _securityHolders.length; i++){
@@ -86,7 +99,7 @@ contract OffChainPayments is Ownable {
             payments[_securityHolders[i]].push(
                 Payment(_paymentTimestamps[i], paymentValue, _offchainPaymentHashes[i], ChallengeState.NotChallenged)
             );
-            emit PaymentRecorded(_securityHolders[i], payments[_securityHolders[i]].length-1, paymentValue, _offchainPaymentHashes[i]);
+            emit Payment(_securityHolders[i], payments[_securityHolders[i]].length-1, CREATED, paymentValue, _offchainPaymentHashes[i]);
         }
     }
 
@@ -126,7 +139,7 @@ contract OffChainPayments is Ownable {
         require(payments[msg.sender][_index].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
         payments[msg.sender][_index].state = ChallengeState.Challenged;
 
-        emit PaymentChallenged(msg.sender, _index, _suggestedValue);
+        emit Payment(msg.sender, _index, CHALLENGED, _suggestedValue, NO_HASH);
     }
 
     /**
@@ -147,15 +160,21 @@ contract OffChainPayments is Ownable {
         indexInRange(_securityHolder, _index)
     {
         uint256 currentValue = payments[_securityHolder][_index].value;
-        bool updated = true;
         if (currentValue == _newValue) {
-            updated = false;
+            emit PaymentUpdated(
+                _securityHolder,
+                _index,
+                RESOLVED_NO_CHANGE,
+                NO_NEW_VALUE,
+                NO_NEW_VALUE
+            );
         } else {
             require(_newPaymentHash != bytes32(0), "No offchainPayment hash provided."); 
             
             emit PaymentUpdated(
                 _securityHolder,
                 _index,
+                RESOLVED_CHANGED,
                 _newValue,
                 _newPaymentHash
             );
@@ -165,7 +184,6 @@ contract OffChainPayments is Ownable {
 
         }
         payments[_securityHolder][_index].state = ChallengeState.Resolved;
-        emit PaymentResolved(_securityHolder, _index, updated);
     }
 
 }

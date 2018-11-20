@@ -22,10 +22,10 @@ contract OffChainPayments is Ownable {
         ChallengeState state; 
     }
 
-    event PaymentRecorded(address _securityHolder, uint256 _index, uint256 _value, bytes32 _offchainPaymentHash);
-    event PaymentChallenged(address _securityHolder, uint256 _index, uint256 _suggestedValue);
-    event PaymentResolved(address _securityHolder, uint256 _index, bool _paymentChanged);
-    event PaymentUpdated(address _securityHolder, uint256 _index, uint256 _newValue, bytes32 _newHash);
+    event PaymentRecorded(address indexed _securityHolder, uint256 indexed _index, uint256 _value, bytes32 _offchainPaymentHash);
+    event PaymentChallenged(address indexed _securityHolder, uint256 indexed _index, uint256 _suggestedValue);
+    event PaymentResolved(address indexed _securityHolder, uint256 indexed _index, bool _paymentChanged);
+    event PaymentUpdated(address indexed _securityHolder, uint256 indexed _index, uint256 _newValue, bytes32 _newHash);
     
     //Challenge period set to two weeks
     uint256 public constant CHALLENGE_PERIOD = 2 weeks;

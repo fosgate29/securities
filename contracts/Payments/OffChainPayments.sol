@@ -134,7 +134,7 @@ contract OffChainPayments is Ownable {
     */
     function challengePayment(uint256 _index, uint256 _suggestedValue) public indexInRange(msg.sender, _index) {
         require(
-            payments[msg.sender][_index].state != ChallengeState.Challenged(),
+            payments[msg.sender][_index].state != ChallengeState.Challenged,
             "Payment already being challenged."
         );
         require(payments[msg.sender][_index].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");

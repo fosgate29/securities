@@ -12,7 +12,7 @@ contract FullRedemption is Ownable {
     RedeemableToken securityToken;
     address paymentOwner;
 
-    constructor (IERC20 _paymentToken, RedeemableToken _securityToken, address _paymentOwner) {
+    constructor (IERC20 _paymentToken, RedeemableToken _securityToken, address _paymentOwner) public {
         paymentToken = _paymentToken;
         securityToken = _securityToken;
         paymentOwner = _paymentOwner;

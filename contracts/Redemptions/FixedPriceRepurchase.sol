@@ -22,7 +22,7 @@ contract FixedPriceRepurchase is Ownable {
         address _paymentOwner,
         uint256 _totalToRepurchase,
         uint256 _saleEndTime
-        ) {
+    ) public {
         offerPerSecurity = _offerPerSecurity;
         paymentToken = _paymentToken;
         securityToken = _securityToken;

@@ -126,7 +126,7 @@ contract OnChainPayments is Ownable {
         public
         indexInRange(msg.sender, _index)
     {        
-        require(payments[msg.sender][_index].state != ChallengeState.Challenged(), "Payment already being challenged.");
+        require(payments[msg.sender][_index].state != ChallengeState.Challenged, "Payment already being challenged.");
         require(payments[msg.sender][_index].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
         payments[msg.sender][_index].state = ChallengeState.Challenged;
 
@@ -148,7 +148,7 @@ contract OnChainPayments is Ownable {
         onlyOwner
         indexInRange(_securityHolder, _index)
     {    
-        require(payments[_securityHolder][_index].state != ChallengeState.Challenged(), "Payment is not in challenged state");
+        require(payments[_securityHolder][_index].state != ChallengeState.Challenged, "Payment is not in challenged state");
         uint256 currentValue = payments[_securityHolder][_index].value;
         if (currentValue == _newValue) {
             emit PaymentEvent(_securityHolder, _index, RESOLVED_NO_CHANGE, NO_NEW_VALUE);

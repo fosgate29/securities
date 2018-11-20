@@ -22,7 +22,7 @@ contract OffChainPayments is Ownable {
         ChallengeState state; 
     }
 
-    event Payment(
+    event PaymentEvent(
         address indexed _securityHolder,
         uint256 indexed _index,
         uint256 indexed _eventType,
@@ -41,10 +41,8 @@ contract OffChainPayments is Ownable {
     
     //Number not available in array
     int256 public constant DOESNT_EXIST = -1;   
-    bytes32 public constant NO_HASH;
-    uint256 public constant NO_NEW_VALUE;
-
-
+    bytes32 public constant NO_HASH = 0x0;
+    uint256 public constant NO_NEW_VALUE = 0;
 
     //The payments each security holder has received
     mapping(address => Payment[]) public payments;
@@ -99,7 +97,7 @@ contract OffChainPayments is Ownable {
             payments[_securityHolders[i]].push(
                 Payment(_paymentTimestamps[i], paymentValue, _offchainPaymentHashes[i], ChallengeState.NotChallenged)
             );
-            emit Payment(_securityHolders[i], payments[_securityHolders[i]].length-1, CREATED, paymentValue, _offchainPaymentHashes[i]);
+            emit PaymentEvent(_securityHolders[i], payments[_securityHolders[i]].length-1, CREATED, paymentValue, _offchainPaymentHashes[i]);
         }
     }
 
@@ -135,11 +133,14 @@ contract OffChainPayments is Ownable {
     * @param _suggestedValue The value that the holder suggests would be correct. 
     */
     function challengePayment(uint256 _index, uint256 _suggestedValue) public indexInRange(msg.sender, _index) {
-        require(payments[msg.sender][_index].state == ChallengeState.NotChallenged);
+        require(
+            payments[msg.sender][_index].state != ChallengeState.Challenged(),
+            "Payment already being challenged."
+        );
         require(payments[msg.sender][_index].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
         payments[msg.sender][_index].state = ChallengeState.Challenged;
 
-        emit Payment(msg.sender, _index, CHALLENGED, _suggestedValue, NO_HASH);
+        emit PaymentEvent(msg.sender, _index, CHALLENGED, _suggestedValue, NO_HASH);
     }
 
     /**
@@ -161,17 +162,17 @@ contract OffChainPayments is Ownable {
     {
         uint256 currentValue = payments[_securityHolder][_index].value;
         if (currentValue == _newValue) {
-            emit PaymentUpdated(
+            emit PaymentEvent(
                 _securityHolder,
                 _index,
                 RESOLVED_NO_CHANGE,
                 NO_NEW_VALUE,
-                NO_NEW_VALUE
+                NO_HASH
             );
         } else {
             require(_newPaymentHash != bytes32(0), "No offchainPayment hash provided."); 
             
-            emit PaymentUpdated(
+            emit PaymentEvent(
                 _securityHolder,
                 _index,
                 RESOLVED_CHANGED,

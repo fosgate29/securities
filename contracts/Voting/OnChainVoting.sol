@@ -45,7 +45,7 @@ contract OnChainVoting is Ownable {
         require(_encVote.length > 0, "Must submit a valid vote");
         require(block.timestamp < endTime, "Can only place vote before time is up");
 
-        submissions[msg.sender] = encVote;
+        submissions[msg.sender] = _encVote;
         submissionsCount += 1;
     }
 

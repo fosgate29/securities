@@ -17,20 +17,28 @@ contract OnChainPayments is Ownable {
         // Value of tokens to be disbursed
         uint256 value;
         //Storing challenge state in struct for now, defaults to NoChallenge
-        ChallengeState state; 
+        ChallengeState state;
     }
 
-
-    event PaymentAllocated(address _securityHolder, uint256 _index, uint256 _paymentValue);
-    event PaymentChallenged(address _securityHolder, uint256 _index, uint256 _suggestedValue);
-    event PaymentUpdated(address _securityHolder, uint256 _index, uint256 _oldValue, uint256 _newValue);
-    event PaymentResolved(address _securityHolder, uint256 _index, bool _paymentChanged);
+    event PaymentEvent(
+        address indexed _securityHolder,
+        uint256 indexed _index,
+        uint256 indexed _eventType,
+        uint256 _value
+    );
     
+    // event types for the Payment event
+    uint256 public constant CREATED = 1;
+    uint256 public constant CHALLENGED = 2;
+    uint256 public constant RESOLVED_NO_CHANGE = 3;
+    uint256 public constant RESOLVED_CHANGED = 4;
+
     //Challenge period set to two weeks
-    uint256 public constant CHALLENGE_PERIOD = 2 weeks;  
-        
+    uint256 public constant CHALLENGE_PERIOD = 2 weeks;
+    
     //Number not available in array
-    int256 public constant DOESNT_EXIST = -1;  
+    int256 public constant DOESNT_EXIST = -1;   
+    uint256 public constant NO_NEW_VALUE = 0x0;  
 
     //Address will be per each security token holder
     mapping(address => Payment[]) public payments;
@@ -78,7 +86,7 @@ contract OnChainPayments is Ownable {
             payments[_securityHolders[i]].push(Payment(now, paymentOwed, ChallengeState.NotChallenged));
             paymentToken.transferFrom(owner(), _securityHolders[i], paymentOwed);
 
-            emit PaymentAllocated(_securityHolders[i], payments[_securityHolders[i]].length-1, paymentOwed);
+            emit PaymentEvent(_securityHolders[i], payments[_securityHolders[i]].length-1, CREATED, paymentOwed);
         }
     }
 
@@ -114,12 +122,15 @@ contract OnChainPayments is Ownable {
     * @param _index Position of Payment in array of user Payments to check.
     * @param _suggestedValue Returned data from signature of hash of the (holder and index). 
     */
-    function challengePayment(uint256 _index, uint256 _suggestedValue) public indexInRange(msg.sender, _index) {        
-        require(payments[msg.sender][_index].state == ChallengeState.NotChallenged, "Payment previously challenged.");
+    function challengePayment(uint256 _index, uint256 _suggestedValue)
+        public
+        indexInRange(msg.sender, _index)
+    {        
+        require(payments[msg.sender][_index].state != ChallengeState.Challenged(), "Payment already being challenged.");
         require(payments[msg.sender][_index].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
         payments[msg.sender][_index].state = ChallengeState.Challenged;
 
-        emit PaymentChallenged(msg.sender, _index, _suggestedValue);
+        emit PaymentEvent(msg.sender, _index, CHALLENGED, _suggestedValue);
     }
 
     /**
@@ -137,24 +148,25 @@ contract OnChainPayments is Ownable {
         onlyOwner
         indexInRange(_securityHolder, _index)
     {    
+        require(payments[_securityHolder][_index].state != ChallengeState.Challenged(), "Payment is not in challenged state");
         uint256 currentValue = payments[_securityHolder][_index].value;
-        bool updated = true;
         if (currentValue == _newValue) {
-            updated = false;
+            emit PaymentEvent(_securityHolder, _index, RESOLVED_NO_CHANGE, NO_NEW_VALUE);
+
         } else if (_newValue > currentValue) {
-            emit PaymentUpdated(_securityHolder, _index, currentValue, _newValue);
+            emit PaymentEvent(_securityHolder, _index, RESOLVED_CHANGED, _newValue);
 
             payments[_securityHolder][_index].value = _newValue;
-
             uint256 paymentOwed = _newValue.sub(currentValue);
             paymentToken.transferFrom(owner(), _securityHolder, paymentOwed);
+
         } else {
-            emit PaymentUpdated(_securityHolder, _index, currentValue, _newValue);
+            emit PaymentEvent(_securityHolder, _index, RESOLVED_CHANGED, _newValue);
+
             payments[_securityHolder][_index].value = _newValue;
         }
 
         payments[_securityHolder][_index].state = ChallengeState.Resolved;
-        emit PaymentResolved(_securityHolder, _index, updated);
     }
  
 }

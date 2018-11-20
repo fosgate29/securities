@@ -2,17 +2,17 @@ pragma solidity 0.4.24;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "./RedeemableToken.sol";
 
 contract FullRedemption is Ownable {
     using SafeMath for uint256;
 
     uint256 paymentPerSecurity;
     IERC20 paymentToken;
-    IERC20 securityToken;
+    RedeemableToken securityToken;
     address paymentOwner;
 
-    constructor (IERC20 _paymentToken, IERC20 _securityToken, address _paymentOwner) {
+    constructor (IERC20 _paymentToken, RedeemableToken _securityToken, address _paymentOwner) {
         paymentToken = _paymentToken;
         securityToken = _securityToken;
         paymentOwner = _paymentOwner;
@@ -20,7 +20,7 @@ contract FullRedemption is Ownable {
 
     function initialiseRedemption(uint256 _paymentPerSecurity) public onlyOwner {
         paymentPerSecurity = _paymentPerSecurity;
-        uint256 numberOfSecurities = _securityToken.totalSupply();
+        uint256 numberOfSecurities = securityToken.totalSupply();
         uint256 totalPayment = numberOfSecurities * _paymentPerSecurity;
         require(
             paymentToken.allowance(paymentOwner, address(this)) >= totalPayment,

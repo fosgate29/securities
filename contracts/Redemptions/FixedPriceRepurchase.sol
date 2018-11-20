@@ -1,14 +1,14 @@
 pragma solidity 0.4.24;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "./RedeemableToken.sol";
 
 contract FixedPriceRepurchase is Ownable {
     using SafeMath for uint256;
 
     uint256 offerPerSecurity;
     IERC20 paymentToken;
-    IERC20 securityToken;
+    RedeemableToken securityToken;
     address paymentOwner;
 
     uint256 totalToRepurchase;
@@ -18,7 +18,7 @@ contract FixedPriceRepurchase is Ownable {
     constructor(
         uint256 _offerPerSecurity,
         IERC20 _paymentToken,
-        IERC20, _securityToken,
+        RedeemableToken _securityToken,
         address _paymentOwner,
         uint256 _totalToRepurchase,
         uint256 _saleEndTime

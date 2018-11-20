@@ -9,7 +9,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
  * @dev ControllableToken is a StandardToken, an OpenZeppelin ERC20 implementation library. ERC20 is also an OpenZeppelin contract.
  * More info about them is available here: https://github.com/OpenZeppelin/zeppelin-solidity/tree/master/contracts/token/ERC20
  */
-contract Token is ERC20, Ownable {
+contract RedeemableToken is ERC20, Ownable {
     using SafeMath for uint256;
 
     address redemption;
@@ -25,10 +25,8 @@ contract Token is ERC20, Ownable {
 	* @param _supply Total supply of tokens.
 	*/
     constructor(uint256 _supply) public {
-        require(_supply != 0, "Supply should be greater than 0.");
-        totalSupply_ = _supply;
-        balances[msg.sender] = _supply;
-        emit Transfer(address(0), msg.sender, _supply);  //event
+        require(_supply > 0, "Supply should be greater than 0.");
+        _mint(msg.sender, _supply);
     }
 
     function setRedemption(address _redemption) external onlyOwner {
@@ -44,20 +42,15 @@ contract Token is ERC20, Ownable {
     }
 
     function redeemAllTokens(address _holder) public onlyRedemptionOrOwner {
-        uint256 balance = balances[_holder];
+        uint256 balance = balanceOf(_holder);
         require(balance > 0, "Holder has no tokens");
-        emit Transfer(_holder, owner(), balance);
-        balances[owner()] += balance;
-        balances[_holder] = 0;
+        _transfer(_holder, owner(), balance);
     }
 
-    function redeemPartialTokens(address _holder, uint256 _number) external onlyOwnerOrRedemption {
-        uint256 balance = balances[_holder];
+    function redeemPartialTokens(address _holder, uint256 _number) external onlyRedemptionOrOwner {
 
-        require(balance >= _number, "Holder does not own sufficient tokens");
-        emit Transfer(_holder, owner(), _number);
-        balances[owner] += _number;
-        balances[_holder] -= _number;
+        require(balanceOf(_holder) >= _number, "Holder does not own sufficient tokens");
+        _transfer(_holder, owner(), _number);
     }
 
 

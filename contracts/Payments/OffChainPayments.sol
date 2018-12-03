@@ -9,19 +9,22 @@ contract OffChainPayments is Ownable {
     using ECDSA for bytes32; 
     using SafeMath for uint256;
 
+    // Each payment is in one and only one ChallengeState at a time
     enum ChallengeState { NotChallenged, Challenged, Resolved }
 
     struct Payment {
-        // off-chian payment made at this timestamp
+        // Off-chain payment was made at this timestamp
         uint256 timestamp;
         // Value of the payment made
         uint256 value;
-        //Hash of wireID, value, receiver, sender, date
+        // Hash of offchain wire-ID, value, receiver, sender, date
         bytes32 offchainPaymentHash; 
-        //Storing challenge state in struct for now, defaults to NotChallenged
+        // Whether the payment has been challenged. This defaults to NotChallenged
         ChallengeState state; 
     }
 
+    // This event is used alongside the codes immediately following to specify the event type
+    // Not all events require a value or payment hash, constants NO_HASH and NO_NEW_VALUE are used in these cases
     event PaymentEvent(
         address indexed _securityHolder,
         uint256 indexed _index,
@@ -30,25 +33,24 @@ contract OffChainPayments is Ownable {
         bytes32 _offchainPaymentHash
     );
     
-    // event types for the Payment event
+    // Event types for the Payment event
     uint256 public constant CREATED = 1;
     uint256 public constant CHALLENGED = 2;
     uint256 public constant RESOLVED_NO_CHANGE = 3;
     uint256 public constant RESOLVED_CHANGED = 4;
 
-    //Challenge period set to two weeks
-    uint256 public constant CHALLENGE_PERIOD = 2 weeks;
-    
-    //Number not available in array
-    int256 public constant DOESNT_EXIST = -1;   
+    // Constants used in events where no new hash or value is needed
     bytes32 public constant NO_HASH = 0x0;
     uint256 public constant NO_NEW_VALUE = 0;
 
-    //The payments each security holder has received
+    // Period within a payee must challenge their payment - customisable
+    uint256 public constant CHALLENGE_PERIOD = 2 weeks;
+    
+    // Returned when a payment doesnt exist in a holder's array of payments
+    int256 public constant DOESNT_EXIST = -1;   
+    
+    // The payments that each security holder has received
     mapping(address => Payment[]) public payments;
-
-    //Address of security token, required for checking the balance of security tokens per holder
-    IERC20 public securityToken;
 
     modifier indexInRange(address _payee, uint256 _index) {
         require(payments[_payee].length > _index && _index >= 0, "Payment index not in range for message sender");
@@ -57,26 +59,23 @@ contract OffChainPayments is Ownable {
 
     /**
 	* @dev Constructor to initialize the contract.
-	* @param _securityToken Address of security token with which to apply payment.
     * @param _issuer Address of issuer or whoever will be managing payment. 
 	*/
-    constructor(IERC20 _securityToken, address _issuer) public {
-        require(_securityToken != address(0), "Security token address cannot be zero.");
-        securityToken = _securityToken;
+    constructor(address _issuer) public {
         transferOwnership(_issuer);
     }
     
     /**
 	* @dev Allows issuer to record payment to security holders.
 	* @param _securityHolders Array of addresses that are security token holders. 
-    * @param _paymentPerSecurity The Payments per security or security token, used to calcuate total Payments owed. 
+    * @param _paymentValues The value for each payment that was made off-chain. 
     * @param _paymentTimestamps The timestamps each of the payments were made at.    
 	* @param _offchainPaymentHashes Array of hashes of (wire#, value, receiver, sender, date) - proposed info.
     * To Do - Ensure decimal places of USD or units. 
     */
     function recordPayments(
         address[] _securityHolders, 
-        uint256 _paymentPerSecurity, 
+        uint256[] _paymentValues, 
         uint256[] _paymentTimestamps,
         bytes32[] _offchainPaymentHashes
     ) 
@@ -84,20 +83,17 @@ contract OffChainPayments is Ownable {
         onlyOwner 
     {
         require(_securityHolders.length > 0, "Empty array cannot be submitted.");
-        require(_paymentPerSecurity > 0, "No payment per security designated.");
-        require(
-            (_securityHolders.length == _offchainPaymentHashes.length) && (_securityHolders.length == _paymentTimestamps.length),
-            "Arrays must be the same length."
-        );
-        for (uint256 i = 0; i < _securityHolders.length; i++){
-            uint256 securitiesOwned = securityToken.balanceOf(_securityHolders[i]);
-            require(securitiesOwned > 0, "Holder does not own any securities.");
-            uint256 paymentValue = securitiesOwned.mul(_paymentPerSecurity);
+        require(_securityHolders.length == _offchainPaymentHashes.length, "Arrays must all be the same length.");
+        require(_securityHolders.length == _paymentTimestamps.length, "Arrays must be the same length.");
+        require(_securityHolders.length == _paymentValues.length, "Arrays must be the same length.");
 
+        for (uint256 i = 0; i < _securityHolders.length; i++) {
             payments[_securityHolders[i]].push(
-                Payment(_paymentTimestamps[i], paymentValue, _offchainPaymentHashes[i], ChallengeState.NotChallenged)
+                Payment(_paymentTimestamps[i], _paymentValues[i], _offchainPaymentHashes[i], ChallengeState.NotChallenged)
             );
-            emit PaymentEvent(_securityHolders[i], payments[_securityHolders[i]].length-1, CREATED, paymentValue, _offchainPaymentHashes[i]);
+            emit PaymentEvent(
+                _securityHolders[i], payments[_securityHolders[i]].length-1, CREATED, _paymentValues[i], _offchainPaymentHashes[i]
+            );
         }
     }
 

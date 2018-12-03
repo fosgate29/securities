@@ -1,6 +1,7 @@
 pragma solidity 0.4.24;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/math/Math.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./RedeemableToken.sol";
 
@@ -13,7 +14,7 @@ contract FixedPriceTender is Ownable {
 
     uint256 paymentPerSecurity;
     uint256 totalToRepurchase;
-    uint256 saleEndTime;
+    uint256 offerEndTime;
 
     uint256 nextTenderToAssess;
     uint256 totalRepurchased;
@@ -48,10 +49,10 @@ contract FixedPriceTender is Ownable {
         uint256 _offerEndTime
     ) public {
         require (
-            _paymentToken.allowance(_issuer, address(this)) >= _totalNoToRepurchase.mul(_offerPerSecurity),
+            _paymentToken.allowance(_issuer, address(this)) >= _totalToRepurchase.mul(_offerPerSecurity),
             "The contract does not have access to enough payment tokens"
         );
-        require(_totalNoToRepurchase <= _securityToken.totalSupply(), "Total to repurchase is larger than total token supply");
+        require(_totalToRepurchase <= _securityToken.totalSupply(), "Total to repurchase is larger than total token supply");
 
         paymentPerSecurity = _paymentPerSecurity;
         paymentToken = _paymentToken;
@@ -108,7 +109,7 @@ contract FixedPriceTender is Ownable {
             // get amount of final array element
             currentTender = holderTender.tenderAmounts[currentIndex];
 
-            toRemove = min256(currentTender, remainingToRemove);
+            toRemove = Math.min(currentTender, remainingToRemove);
             remainingToRemove -= toRemove;
             holderTender.tenderAmounts[currentIndex] -= toRemove;
             currentIndex -= 1;
@@ -118,7 +119,7 @@ contract FixedPriceTender is Ownable {
         overallTotalTendered -= _numberToRemove;
 
         // transfer these tokens from the holder to this contract
-        securityToken.transfer(msg.sender, _numberToTender);
+        securityToken.transfer(msg.sender, _numberToRemove);
     }
 
     function finaliseTender(uint256 _batchSize) external isAfterEndTime {
@@ -140,11 +141,12 @@ contract FixedPriceTender is Ownable {
     function repurchaseTender() internal {
         address holder = orderedHolders[nextTenderToAssess];
         HolderTender storage holderTender = tenders[msg.sender];
+        uint256 nextToProcess = holderTender.nextToProcess;
 
         // Assert the next to process isn't beyond the end of the array
-        assert(holderTender.nextToProcess < holderTender.tenderAmounts.length);
+        assert(nextToProcess < holderTender.tenderAmounts.length);
 
-        uint256 toRepurchase = min256(holderTender.tenderAmounts[nextToProcess], totalToRepurchase - totalRepurchased);
+        uint256 toRepurchase = Math.min(holderTender.tenderAmounts[nextToProcess], totalToRepurchase - totalRepurchased);
         securityToken.transfer(issuer, toRepurchase);
         paymentToken.transferFrom(issuer, holder, toRepurchase.mul(paymentPerSecurity));
 
@@ -161,9 +163,10 @@ contract FixedPriceTender is Ownable {
     function returnTender() internal {
         address holder = orderedHolders[nextTenderToAssess];
         HolderTender storage holderTender = tenders[msg.sender];
+        uint256 nextToProcess = holderTender.nextToProcess;
 
         // Assert the next to process isn't beyond the end of the array
-        assert(holderTender.nextToProcess < holderTender.tenderAmounts.length);
+        assert(nextToProcess < holderTender.tenderAmounts.length);
 
         // Return the tokens to the security holder
         securityToken.transfer(holder, holderTender.tenderAmounts[nextToProcess]);

@@ -49,7 +49,6 @@ contract RedeemableToken is ERC20, Ownable {
     }
 
     function redeemPartialTokens(address _holder, uint256 _number) external onlyRedemptionOrOwner {
-
         require(balanceOf(_holder) >= _number, "Holder does not own sufficient tokens");
         _transfer(_holder, owner(), _number);
     }

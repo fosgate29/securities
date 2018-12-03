@@ -11,28 +11,31 @@ contract PartialRedemption is Ownable {
     IERC20 paymentToken;
     RedeemableToken securityToken;
     address paymentOwner;
+    uint256 paymentPerSecurity;
 
-    constructor (IERC20 _paymentToken, RedeemableToken _securityToken, address _paymentOwner) public {
+    constructor (
+        IERC20 _paymentToken,
+        RedeemableToken _securityToken,
+        address _paymentOwner,
+        uint256 _paymentPerSecurit
+    ) public {
+        require(address(_paymentToken) != 0, "Payment token contract required");
+        require(address(_securityToken) != 0, "Security token contract required");
+        require(address(_paymentOwner) != 0, "Payment owner address required");
+        require(_paymentPerSecurity > 0, "No payment per security provided");
+
         paymentToken = _paymentToken;
         securityToken = _securityToken;
         paymentOwner = _paymentOwner;
-    }
-
-    function initialiseRedemption(uint256 _paymentPerSecurity) public onlyOwner {
         paymentPerSecurity = _paymentPerSecurity;
-        uint256 numberOfSecurities = securityToken.totalSupply();
-        uint256 totalPayment = numberOfSecurities * _paymentPerSecurity;
-        require(
-            paymentToken.allowance(paymentOwner, address(this)) >= totalPayment,
-            "Redemption contract does not have access to enough tokens"
-        );
     }
 
-    function redeemTokens(address[] _holders) public onlyOwner {
+    function redeemTokens(address[] _holders, uint256[] _numberOfTokens) public onlyOwner {
+        require(_holders.length == _numberOfTokens, "The arrays must be the same length");
+        require(_holders.length > 0, "The arrays must not be empty");
         for (uint256 i = 0; i < _holders.length; i++) {
-            uint256 balance = securityToken.balanceOf(_holders[i]);
-            securityToken.redeemAllTokens(_holders[i]);
-            paymentToken.transferFrom(paymentOwner, _holders[i], balance*paymentPerSecurity);
+            securityToken.redeemPartialTokens(_holders[i], _numberOfTokens[i]);
+            paymentToken.transferFrom(paymentOwner, _holders[i], _numberOfTokens[i]*paymentPerSecurity);
         }
     }
 

@@ -1,9 +1,10 @@
 pragma solidity 0.4.24;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./RedeemableToken.sol";
 
-contract FixedPriceRepurchase is Ownable {
+contract FixedPriceTender is Ownable {
     using SafeMath for uint256;
 
     IERC20 paymentToken;
@@ -168,7 +169,5 @@ contract FixedPriceRepurchase is Ownable {
         securityToken.transfer(holder, holderTender.tenderAmounts[nextToProcess]);
         holderTender.nextToProcess++;
     }
-
-    // TODO do we need to be able to specify who is entitled to a repurchase? Or if they start one are all holders entitled to one?
 
 }

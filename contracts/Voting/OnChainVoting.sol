@@ -5,6 +5,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 contract OnChainVoting is Ownable { 
+    using SafeMath for uint256;
 
     // Will be a users salt hashed;
     mapping(bytes32 => uint256) votes;

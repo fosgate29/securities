@@ -52,6 +52,7 @@ contract OffChainPayments is Ownable {
     // The payments that each security holder has received
     mapping(address => Payment[]) public payments;
 
+    // To verify the provided array index is not out of range
     modifier indexInRange(address _payee, uint256 _index) {
         require(payments[_payee].length > _index && _index >= 0, "Payment index not in range for message sender");
         _;
@@ -59,19 +60,18 @@ contract OffChainPayments is Ownable {
 
     /**
 	* @dev Constructor to initialize the contract.
-    * @param _issuer Address of issuer or whoever will be managing payment. 
+    * @param _issuer The address of issuer (or whoever will be managing the contract). 
 	*/
     constructor(address _issuer) public {
         transferOwnership(_issuer);
     }
     
     /**
-	* @dev Allows issuer to record payment to security holders.
-	* @param _securityHolders Array of addresses that are security token holders. 
-    * @param _paymentValues The value for each payment that was made off-chain. 
-    * @param _paymentTimestamps The timestamps each of the payments were made at.    
-	* @param _offchainPaymentHashes Array of hashes of (wire#, value, receiver, sender, date) - proposed info.
-    * To Do - Ensure decimal places of USD or units. 
+	* @dev Allows issuer to record payments made to security holders on-chain.
+	* @param _securityHolders Array of addresses - the security token holders. 
+    * @param _paymentValues Array of values - each payment that was made off-chain. 
+    * @param _paymentTimestamps Array of timestamps at which the payments were made at.    
+	* @param _offchainPaymentHashes Array of hashes to identify the off-chain payment.
     */
     function recordPayments(
         address[] _securityHolders, 
@@ -84,9 +84,10 @@ contract OffChainPayments is Ownable {
     {
         require(_securityHolders.length > 0, "Empty array cannot be submitted.");
         require(_securityHolders.length == _offchainPaymentHashes.length, "Arrays must all be the same length.");
-        require(_securityHolders.length == _paymentTimestamps.length, "Arrays must be the same length.");
-        require(_securityHolders.length == _paymentValues.length, "Arrays must be the same length.");
+        require(_securityHolders.length == _paymentTimestamps.length, "Arrays must all be the same length.");
+        require(_securityHolders.length == _paymentValues.length, "Arrays must all be the same length.");
 
+        // Records each provided payment to the relevant array one by one.
         for (uint256 i = 0; i < _securityHolders.length; i++) {
             payments[_securityHolders[i]].push(
                 Payment(_paymentTimestamps[i], _paymentValues[i], _offchainPaymentHashes[i], ChallengeState.NotChallenged)
@@ -98,53 +99,60 @@ contract OffChainPayments is Ownable {
     }
 
     /**
-	* @dev Allows the front end to calculate the index based on the offchainPayment and holder information. 
-    * @param _securityHolder The address whom the payment was for
-    * @param _offchainPaymentHash Hashed data of offchain payment. 
-    * @return The index of the offchainPayment for the respective security token holder.  
+	* @dev For use by a front end to locate a payment in the holder's array of payments.
+    * @param _securityHolder The address of the holder the payment was made to.
+    * @param _offchainPaymentHash Hashed data of the off-chain payment. 
+    * @return The index of the off-chain payment. This is -1 if the payment does not exist
     */
     function lookUpPaymentIndex(address _securityHolder, bytes32 _offchainPaymentHash)
         public
         view
         returns(int256)
     {
-        require(_offchainPaymentHash != bytes32(0), "No offchainPayment hash provided.");
-        require(_securityHolder != address(0), "No security holder address provided");
+        require(_offchainPaymentHash != bytes32(0), "No off-chain payment hash was provided.");
+        require(_securityHolder != address(0), "No security holder address was provided.");
 
         Payment[] memory holderPayments = payments[_securityHolder];
-        require (holderPayments.length > 0, "holder has no payment history");
+        require (holderPayments.length > 0, "The holder has no payment history.");
 
+        // Looks at each of the holder's payments to locate the correct record.
         for (uint256 i = holderPayments.length-1; i >= 0; i--){
             if (holderPayments[i].offchainPaymentHash == _offchainPaymentHash)
             {
                 return int256(i); 
             } 
         }
+        // This constant is -1. It is returned if the record in question doesnt exist.
         return DOESNT_EXIST;
     }    
 
     /**
-	* @dev Allows issuer to challenge the Payments behalf of a security holder. 
-    * @param _index Hashed data offchainPayment of Payments. 
-    * @param _suggestedValue The value that the holder suggests would be correct. 
+	* @dev Allows the holder to challenge their payment on-chain. 
+    * @param _index The index of the payment that they are challenging.
+    * @param _suggestedValue The value that the holder suggests is correct. 
     */
     function challengePayment(uint256 _index, uint256 _suggestedValue) public indexInRange(msg.sender, _index) {
+        // Challenges cannot occur on payments already in a challenged state.
+        // Payments in Resolved and NotChallenged are therefore those that can be challenged.
         require(
             payments[msg.sender][_index].state != ChallengeState.Challenged,
             "Payment already being challenged."
         );
-        require(payments[msg.sender][_index].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
-        payments[msg.sender][_index].state = ChallengeState.Challenged;
 
+        // Challenges to payments must occur within the challenge period.
+        require(payments[msg.sender][_index].timestamp.add(CHALLENGE_PERIOD) <= now, "Challenge period is over.");
+
+        payments[msg.sender][_index].state = ChallengeState.Challenged;
         emit PaymentEvent(msg.sender, _index, CHALLENGED, _suggestedValue, NO_HASH);
     }
 
     /**
-	* @dev Allows issuer to resolve the Payments offchainPayment that has been challenged. 
-	* @param _securityHolder Address of holder to resolve Payments.  
-    * @param _index Position of Payments in array of user payment to resolve.
-    * @param _newPaymentHash New hash of corrected (wire#, value, receiver, sender, date).
-    * @param _newValue New, corrected value for the Payments. Will need to be handled offchain. 
+	* @dev Allows the issuer to resolve any payments that have been challenged.
+    * @dev This function can also be called to update the value of an un-challenged payment.
+	* @param _securityHolder Address of holder to whom the payment was made. 
+    * @param _index The index of the payment within the holder's array of payments.
+    * @param _newPaymentHash The hash of any updated payment (wire#, value, receiver, sender, date).
+    * @param _newValue The value of the corrected payment. This is equal to the old payment if no change has been made.
     */
     function resolveChallenge(
         address _securityHolder,
@@ -157,6 +165,7 @@ contract OffChainPayments is Ownable {
         indexInRange(_securityHolder, _index)
     {
         uint256 currentValue = payments[_securityHolder][_index].value;
+        // If the payment value hasnt been updated, no resolution is made.
         if (currentValue == _newValue) {
             emit PaymentEvent(
                 _securityHolder,
@@ -166,6 +175,7 @@ contract OffChainPayments is Ownable {
                 NO_HASH
             );
         } else {
+            // Otherwise the payment record is updated to reflect the new information.
             require(_newPaymentHash != bytes32(0), "No offchainPayment hash provided."); 
             
             emit PaymentEvent(
@@ -180,6 +190,7 @@ contract OffChainPayments is Ownable {
             payments[_securityHolder][_index].offchainPaymentHash = _newPaymentHash; 
 
         }
+        // The payment is marked as resolved.
         payments[_securityHolder][_index].state = ChallengeState.Resolved;
     }
 

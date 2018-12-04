@@ -10,10 +10,9 @@ contract FixedPriceTender is Ownable {
 
     IERC20 paymentToken;
     RedeemableToken securityToken;
-    address issuer;
 
-    uint256 paymentPerSecurity;
-    uint256 totalToRepurchase;
+    uint256 paymentPerSecurity; // The number of payment tokens offered per security token
+    uint256 totalToRepurchase; // The maximum number of securities the issuer will repurchase
     uint256 offerEndTime;
 
     uint256 nextTenderToAssess;
@@ -65,6 +64,16 @@ contract FixedPriceTender is Ownable {
     function updateOfferEndTime(uint256 _newOfferEnd) external onlyOwner isBeforeEndTime {
         require(_newOfferEnd >= now, "New sale end time cannot be in the past");
         offerEndTime = _newOfferEnd;
+    }
+
+    function updatePaymentPerSecurity(uint256 _newPaymentPerSecurity) external onlyOwner isBeforeEndTime {
+        require(_newPaymentPerSecurity > 0, "New payment per security cannot be 0");
+        paymentPerSecurity = _newPaymentPerSecurity;
+    }
+
+    function updateTotalToRepurchase(uint256 _newTotalToRepurchase) external onlyOwner isBeforeEndTime {
+        require(_newTotalToRepurchase >= 0, "New payment per security cannot be negative");
+        totalToRepurchase = _newTotalToRepurchase;
     }
 
     function optInToTender(uint256 _numberToTender) external isBeforeEndTime {

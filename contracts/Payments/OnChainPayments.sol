@@ -181,7 +181,6 @@ contract OnChainPayments is Ownable {
 
         } else {
             // Otherwise the payment tokens must be transferred by the holder.
-
             emit PaymentEvent(_securityHolder, _index, RESOLVED_CHANGED, _newValue);
 
             payments[_securityHolder][_index].value = _newValue;

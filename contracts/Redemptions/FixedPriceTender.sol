@@ -130,7 +130,7 @@ contract FixedPriceTender is Ownable {
 
     /**
 	* @dev Function to allow a security holder to opt into the offering.
-    * @param _numberToTender The number of securities the sender would like opt out of the tender.
+    * @param _numberToRemove The number of securities the sender would like opt out of the tender.
 	*/
     function optOutOfTender(uint256 _numberToRemove) external isBeforeEndTime {
         require(_numberToRemove > 0, "Must provide a number of securities to opt out");

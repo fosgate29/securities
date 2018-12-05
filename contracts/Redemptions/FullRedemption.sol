@@ -7,10 +7,10 @@ import "./RedeemableToken.sol";
 contract FullRedemption is Ownable {
     using SafeMath for uint256;
 
-    IERC20 _paymentToken;
-    RedeemableToken _securityToken;
-    address _paymentOwner;
-    uint256 _paymentPerSecurity;
+    IERC20 paymentToken;
+    RedeemableToken securityToken;
+    address paymentOwner;
+    uint256 paymentPerSecurity;
 
     /**
 	* @dev Constructor to initialize the contract.

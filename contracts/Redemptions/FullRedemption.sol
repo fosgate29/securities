@@ -52,7 +52,6 @@ contract FullRedemption is Ownable {
         // Loops through the list of holders, redeeming their tokens.
         for (uint256 i = 0; i < _holders.length; i++) {
             uint256 balance = securityToken.balanceOf(_holders[i]);
-            require(balance > 0, "Holder does not own any securities.");
 
             // Redeem the securities and transfer the payment.
             securityToken.redeemAllTokens(_holders[i]);

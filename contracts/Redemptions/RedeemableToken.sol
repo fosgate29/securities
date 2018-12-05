@@ -4,54 +4,45 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
-/**
- * @title Token base contract - Defines basic structure for a token
- *
- * @dev ControllableToken is a StandardToken, an OpenZeppelin ERC20 implementation library. ERC20 is also an OpenZeppelin contract.
- * More info about them is available here: https://github.com/OpenZeppelin/zeppelin-solidity/tree/master/contracts/token/ERC20
- */
 contract RedeemableToken is ERC20, Ownable {
     using SafeMath for uint256;
 
+    // The address of the redemption contract that should be able to alter balances
     address redemption;
 
+    // A modifier to ensure redemptions can only occur by instruction of a redemption contract or the token owner
     modifier onlyRedemptionOrOwner {
-        require(redemption != address(0), "No redemption contract set");
         require(msg.sender == redemption || msg.sender == owner(), "Only redemption or owner contract can call this function");
         _;
     }
 
 	/**
-	* @dev Transfer is an event inherited from ERC20Basic.sol interface (OpenZeppelin).
-	* @param _supply Total supply of tokens.
+	* @dev Function to provide the address of a redemption contract.
+	* @param _redemption The redemption contract's address.
 	*/
-    constructor(uint256 _supply) public {
-        require(_supply > 0, "Supply should be greater than 0.");
-        _mint(msg.sender, _supply);
-    }
-
     function setRedemption(address _redemption) external onlyOwner {
         require(_redemption != address(0), "Redemption must not have 0 address");
         redemption = _redemption;
     }
 
-    function redeemAllTokensList(address[] _holders) external onlyRedemptionOrOwner {
-        require(_holders.length > 0, "List of holders empty");
-        for (uint256 i = 0; i < _holders.length; i++) {
-            redeemAllTokens(_holders[i]);
-        }
-    }
-
-    function redeemAllTokens(address _holder) public onlyRedemptionOrOwner {
+	/**
+	* @dev Function to redeem all tokens from an address.
+	* @param _holder The address from which to redeem all tokens.
+	*/
+    function redeemAllTokens(address _holder) external onlyRedemptionOrOwner {
         uint256 balance = balanceOf(_holder);
         require(balance > 0, "Holder has no tokens");
         _transfer(_holder, owner(), balance);
     }
 
+	/**
+	* @dev Function to redeem a specified number of tokens from an address.
+	* @param _holder The address from which to redeem tokens.
+    * @param _number The number of tokens to redeem.
+	*/
     function redeemPartialTokens(address _holder, uint256 _number) external onlyRedemptionOrOwner {
         require(balanceOf(_holder) >= _number, "Holder does not own sufficient tokens");
         _transfer(_holder, owner(), _number);
     }
-
 
 }

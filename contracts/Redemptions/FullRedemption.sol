@@ -7,11 +7,18 @@ import "./RedeemableToken.sol";
 contract FullRedemption is Ownable {
     using SafeMath for uint256;
 
-    uint256 paymentPerSecurity;
-    IERC20 paymentToken;
-    RedeemableToken securityToken;
-    address paymentOwner;
+    IERC20 _paymentToken;
+    RedeemableToken _securityToken;
+    address _paymentOwner; // The account the payment tokens are stored in
+    uint256 _paymentPerSecurity; // The amount each holder will receive per security redeemed
 
+    /**
+	* @dev Constructor to initialize the contract.
+    * @param _paymentToken The token to be used as payment.
+    * @param _securityToken The security token itself.
+    * @param _paymentOwner The address of issuer (or whoever will be managing the contract). 
+    * @param _paymentPerSecurity Value to pay per security repurchased.
+    */
     constructor (
         IERC20 _paymentToken,
         RedeemableToken _securityToken,

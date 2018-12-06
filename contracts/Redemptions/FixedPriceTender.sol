@@ -9,7 +9,7 @@ contract FixedPriceTender is Ownable {
     using SafeMath for uint256;
 
     IERC20 paymentToken;
-    RedeemableToken securityToken;
+    IERC20 securityToken;
 
     uint256 paymentPerSecurity; // The number of payment tokens offered per security token.
     uint256 totalToRepurchase; // The maximum number of securities the owner() will repurchase.
@@ -52,7 +52,7 @@ contract FixedPriceTender is Ownable {
     constructor(
         uint256 _paymentPerSecurity,
         IERC20 _paymentToken,
-        RedeemableToken _securityToken,
+        IERC20 _securityToken,
         address _issuer,
         uint256 _totalToRepurchase,
         uint256 _offerEndTime
@@ -78,7 +78,7 @@ contract FixedPriceTender is Ownable {
     * @param _newOfferEnd The new end time for the offer.
 	*/
     function updateOfferEndTime(uint256 _newOfferEnd) external onlyOwner isBeforeEndTime {
-        require(_newOfferEnd >= now, "New sale end time cannot be in the past");
+        require(_newOfferEnd >= now, "New offer end time cannot be in the past");
         offerEndTime = _newOfferEnd;
     }
 
@@ -109,9 +109,6 @@ contract FixedPriceTender is Ownable {
         // Create a storage reference so the changes update the mapping
         HolderTender storage holderTender = tenders[msg.sender];
 
-        // Calculate new total tender for this holder
-        uint256 newholderTotalTendered = holderTender.holderTotalTendered + _numberToTender;
-
         // Check that this contract can control the specified number of tokens
         require(
             securityToken.allowance(msg.sender, address(this)) >= _numberToTender,
@@ -119,7 +116,7 @@ contract FixedPriceTender is Ownable {
         );
 
         // Update the holder's tender struct to reflect this addition
-        holderTender.holderTotalTendered = newholderTotalTendered;
+        holderTender.holderTotalTendered += _numberToTender;
         holderTender.tenderAmounts.push(_numberToTender);
 
         overallTotalTendered += _numberToTender;

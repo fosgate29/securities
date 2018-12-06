@@ -59,7 +59,7 @@ contract OnChainVoting is Ownable {
         require(securityToken.balanceOf(msg.sender) > 0, "The sender's token balance must be greater than 0");
         require(_encVote.length > 0, "Must submit a valid vote");
         require(now < endTime, "The vote has end time has been reached");
-        require(submissions[msg.sender] = 0, "The voter has already voted");
+        require(submissions[msg.sender].length == 0, "The voter has already voted");
 
         // Store the vote submission and track the number of submissions
         submissions[msg.sender] = _encVote;

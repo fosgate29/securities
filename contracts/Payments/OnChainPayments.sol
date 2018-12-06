@@ -52,7 +52,7 @@ contract OnChainPayments is Ownable {
     IERC20 public securityToken;
     
     // The address of the payment token
-    IERC20 public paymentToken; 
+    IERC20 public paymentToken;
 
     // To verify the provided array index is not out of range
     modifier indexInRange(address _payee, uint256 _index) {

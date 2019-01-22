@@ -18,5 +18,8 @@
   },
   "yargs": {
     "parse-numbers": false
+  },
+  "devDependencies": {
+    "openzeppelin-test-helpers": "^0.1.2"
   }
 }

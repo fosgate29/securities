@@ -12,6 +12,13 @@ contract FullRedemption is Ownable {
     address paymentOwner;
     uint256 paymentPerSecurity;
 
+    bool public isSetUp = false;
+
+    modifier contractIsSetUp {
+        require(isSetUp, "The setup contract has not been called");
+        _;
+    } 
+
     /**
 	* @dev Constructor to initialize the contract.
     * @param _paymentToken The token to be used as payment.
@@ -30,23 +37,27 @@ contract FullRedemption is Ownable {
         require(address(_paymentOwner) != address(0), "Payment owner address required");
         require(_paymentPerSecurity > 0, "No payment amount provided");
 
-        // Check this contract has access to enough payment tokens.
-        uint256 totalPayment = securityToken.totalSupply() * _paymentPerSecurity;
-        require(
-            _paymentToken.allowance(paymentOwner, address(this)) >= totalPayment,
-            "Redemption contract does not have access to enough tokens"
-        );
         paymentToken = _paymentToken;
         securityToken = _securityToken;
         paymentOwner = _paymentOwner;
         paymentPerSecurity = _paymentPerSecurity;
     }
 
+    function setup() public {
+        // Check this contract has access to enough payment tokens.
+        uint256 totalPaymentNeeded = securityToken.totalSupply() * paymentPerSecurity;
+        require(
+            paymentToken.allowance(paymentOwner, address(this)) >= totalPaymentNeeded,
+            "Redemption contract does not have access to enough tokens"
+        );
+        isSetUp = true;
+    }
+
     /**
 	* @dev Function to redeem the tokens of a group of security holders.
     * @param _holders A list of addresses of security holders.
     */
-    function redeemTokens(address[] memory _holders) public onlyOwner {
+    function redeemTokens(address[] memory _holders) public onlyOwner contractIsSetUp {
         require(_holders.length > 0, "Empty array provided");
 
         // Loops through the list of holders, redeeming their tokens.

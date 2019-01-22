@@ -1,4 +1,4 @@
-pragma solidity 0.4.24; 
+pragma solidity 0.5.0; 
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -74,10 +74,10 @@ contract OffChainPayments is Ownable {
 	* @param _offchainPaymentHashes Array of hashes to identify the off-chain payment.
     */
     function recordPayments(
-        address[] _securityHolders, 
-        uint256[] _paymentValues, 
-        uint256[] _paymentTimestamps,
-        bytes32[] _offchainPaymentHashes
+        address[] memory _securityHolders, 
+        uint256[] memory _paymentValues, 
+        uint256[] memory _paymentTimestamps,
+        bytes32[] memory _offchainPaymentHashes
     ) 
         public 
         onlyOwner 

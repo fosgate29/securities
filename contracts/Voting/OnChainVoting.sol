@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -41,7 +41,7 @@ contract OnChainVoting is Ownable {
     ) 
         public 
     {
-        require(_securityToken != address(0), "Token address cannot be zero.");
+        require(address(_securityToken) != address(0), "Token address cannot be zero.");
         require(now < _endTime, "The end time must be in the future");
         require(_issuer != address(0), "Issuer address cannot be zero.");
 
@@ -55,7 +55,7 @@ contract OnChainVoting is Ownable {
 	* @dev Function for every token holder to submit their vote.
 	* @param _encVote Encryption of user's salt concatenated with their vote, encrypted with issuer's public key.
     */
-    function placeVote(bytes _encVote) public {
+    function placeVote(bytes memory _encVote) public {
         require(securityToken.balanceOf(msg.sender) > 0, "The sender's token balance must be greater than 0");
         require(_encVote.length > 0, "Must submit a valid vote");
         require(now < endTime, "The vote has end time has been reached");
@@ -73,8 +73,8 @@ contract OnChainVoting is Ownable {
     * @param _usersVote Array of plaintext values of users vote
     */
     function submitUserVotes(
-        bytes32[] _usersSaltHash, 
-        uint256[] _usersVote
+        bytes32[] memory _usersSaltHash, 
+        uint256[] memory _usersVote
     )
         public 
         onlyOwner

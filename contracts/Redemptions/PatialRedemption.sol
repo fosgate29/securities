@@ -1,4 +1,4 @@
-pragma solidity 0.4.24; 
+pragma solidity 0.5.0; 
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -25,9 +25,9 @@ contract PartialRedemption is Ownable {
         address _paymentOwner,
         uint256 _paymentPerSecurity
     ) public {
-        require(address(_paymentToken) != 0, "Payment token contract required");
-        require(address(_securityToken) != 0, "Security token contract required");
-        require(address(_paymentOwner) != 0, "Payment owner address required");
+        require(address(_paymentToken) != address(0), "Payment token contract required");
+        require(address(_securityToken) != address(0), "Security token contract required");
+        require(address(_paymentOwner) != address(0), "Payment owner address required");
         require(_paymentPerSecurity > 0, "No payment per security provided");
 
         paymentToken = _paymentToken;
@@ -42,7 +42,7 @@ contract PartialRedemption is Ownable {
     * @param _holders A list of addresses of security holders.
     * @param _numberOfTokens The number of tokens to redeem from each holder in turn.
     */
-    function redeemTokens(address[] _holders, uint256[] _numberOfTokens) public onlyOwner {
+    function redeemTokens(address[] memory _holders, uint256[] memory _numberOfTokens) public onlyOwner {
         require(_holders.length == _numberOfTokens.length, "The arrays must be the same length");
         require(_holders.length > 0, "The arrays must not be empty");
 

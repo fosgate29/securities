@@ -1,4 +1,4 @@
-pragma solidity 0.4.24; 
+pragma solidity 0.5.0; 
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -67,7 +67,7 @@ contract OnChainPayments is Ownable {
     * @param _issuer The address of issuer (or whoever will be managing the contract). 
 	*/
     constructor(IERC20 _securityToken, IERC20 _paymentToken, address _issuer) public {
-        require(_securityToken != address(0) && _paymentToken != address(0), "Token addresses cannot be zero.");
+        require(address(_securityToken) != address(0) && address(_paymentToken) != address(0), "Token addresses cannot be zero.");
         securityToken = _securityToken;
         paymentToken = _paymentToken;
         transferOwnership(_issuer);    
@@ -79,7 +79,7 @@ contract OnChainPayments is Ownable {
     * @param _paymentPerSecurity The amount to pay per security, used to calcuate total value owed. 
     * Issuer must approve this contract to transfer the payment tokens prior to this.
     */
-    function makePayments(address[] _securityHolders, uint256 _paymentPerSecurity) 
+    function makePayments(address[] memory _securityHolders, uint256 _paymentPerSecurity) 
         public 
         onlyOwner 
     {

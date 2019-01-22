@@ -1,4 +1,4 @@
-pragma solidity 0.4.24; 
+pragma solidity 0.5.0; 
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -25,9 +25,9 @@ contract FullRedemption is Ownable {
         address _paymentOwner,
         uint256 _paymentPerSecurity
     ) public {
-        require(address(_paymentToken) != 0, "Payment token contract required");
-        require(address(_securityToken) != 0, "Security token contract required");
-        require(address(_paymentOwner) != 0, "Payment owner address required");
+        require(address(_paymentToken) != address(0), "Payment token contract required");
+        require(address(_securityToken) != address(0), "Security token contract required");
+        require(address(_paymentOwner) != address(0), "Payment owner address required");
         require(_paymentPerSecurity > 0, "No payment amount provided");
 
         // Check this contract has access to enough payment tokens.
@@ -46,7 +46,7 @@ contract FullRedemption is Ownable {
 	* @dev Function to redeem the tokens of a group of security holders.
     * @param _holders A list of addresses of security holders.
     */
-    function redeemTokens(address[] _holders) public onlyOwner {
+    function redeemTokens(address[] memory _holders) public onlyOwner {
         require(_holders.length > 0, "Empty array provided");
 
         // Loops through the list of holders, redeeming their tokens.

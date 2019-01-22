@@ -9,8 +9,8 @@ contract OnChainVoting is Ownable {
 
     // To be updated as votes are submitted to the chain.
     // Mapping of a voter's address to Encrypted(salt ++ vote).
-    mapping(address => bytes) submissions;
-    uint256 submissionsCount = 0;
+    mapping(address => string) public submissions;
+    uint256 public submissionsCount = 0;
 
     // To be updated as the issuer verifies the vote's result on chain.
     // Mapping of hash(salt) for a user to their vote.
@@ -55,11 +55,11 @@ contract OnChainVoting is Ownable {
 	* @dev Function for every token holder to submit their vote.
 	* @param _encVote Encryption of user's salt concatenated with their vote, encrypted with issuer's public key.
     */
-    function placeVote(bytes memory _encVote) public {
+    function placeVote(string memory _encVote) public {
         require(securityToken.balanceOf(msg.sender) > 0, "The sender's token balance must be greater than 0");
-        require(_encVote.length > 0, "Must submit a valid vote");
+        require(bytes(_encVote).length > 0, "Must submit a valid vote");
         require(now < endTime, "The vote has end time has been reached");
-        require(submissions[msg.sender].length == 0, "The voter has already voted");
+        require(bytes(submissions[msg.sender]).length == 0, "The voter has already voted");
 
         // Store the vote submission and track the number of submissions
         submissions[msg.sender] = _encVote;

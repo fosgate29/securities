@@ -9,6 +9,10 @@
     "compile": "truffle compile"
   },
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
+    "babel-register": "^6.26.0",
+    "bluebird": "^3.5.1",
+    "ganache-cli": "^6.1.0",
     "openzeppelin-solidity": "2.1.2",
     "truffle": "5.0.2"
   },

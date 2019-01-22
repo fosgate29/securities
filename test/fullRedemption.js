@@ -1,39 +1,48 @@
-import Promise from "bluebird";
-import increaseTime, { duration } from "./helpers/increaseTime";
-import latestTime from './helpers/latestTime';
-import expectThrow from "./helpers/expectThrow";
+const Promise = require("bluebird");
+// const latestTime = require("./helpers/latestTime");
+// import increaseTime, { duration } from "./helpers/increaseTime";
+// const expectThrow = require("./helpers/expectThrow");
 
 web3.eth = Promise.promisifyAll(web3.eth);
 
 const FullRedemption = artifacts.require("FullRedemption");
-const RedeemableToken = artifacts.require("RedeemableToken");
+const PaymentToken = artifacts.require("PaymentTokenMock");
 
 contract("FullRedemption", accounts => {
   let fullRedemption;
+  let securityToken;
+  let paymentToken;
 
   const issuer = accounts[0];
   const tokenOwner = accounts[1];
   const paymentOwner = accounts[2];
+  const holderOne = accounts[3];
+  const holderTwo = accounts[4];
+  const holderThree = accounts[5];
+  const holderFour = accounts[6];
 
-  let token = await RedeemableToken.new({ from: tokenOwner });
-
-  const initialWei = 1000;
-  const disbursementWei = 2000;
-  const disbursementDuration = duration.weeks(5);
 
   beforeEach(async () => {
-    vault = await Vault.new(
-      wallet,
-      initialWei,
-      disbursementWei,
-      disbursementDuration,
-      { from: owner }
+    securityToken = await RedeemableToken.new( issuer, 10000, { from: tokenOwner });
+    paymentToken = await PaymentToken.new( paymentOwner, 1000000, { from: paymentOwner });
+
+    securityToken.transfer(holderOne, 100, { from: issuer });
+    securityToken.transfer(holderTwo, 200, { from: issuer });
+    securityToken.transfer(holderThree, 300, { from: issuer });
+    securityToken.transfer(holderFour, 400, { from: issuer });
+
+    fullRedemption = await FullRedemption.new(
+        paymentToken,
+        securityToken,
+        paymentOwner,
+        5,
+        { from: issuer }
     );
   });
 
-  it("should be owned by owner", async () => {
-    const currentOwner = await vault.owner.call();
-    assert.strictEqual(currentOwner, owner, "Contract is not owned by owner");
+  it("should be owned by the issuer", async () => {
+    const currentOwner = await fullRedemption.owner.call();
+    assert.strictEqual(currentOwner, issuer, "Contract is not owned by owner");
   });
 
 });

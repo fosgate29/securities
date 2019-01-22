@@ -33,3 +33,7 @@ jspm_packages/
 
 # solidity coverage Output
 coverage.json
+
+# Adding yarn
+yarn.lock
+yarn-error.log

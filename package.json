@@ -9,8 +9,8 @@
     "compile": "truffle compile"
   },
   "dependencies": {
-    "openzeppelin-solidity": "^2.1.2",
-    "truffle": "^5.0.2"
+    "openzeppelin-solidity": "2.1.2",
+    "truffle": "5.0.2"
   },
   "yargs": {
     "parse-numbers": false

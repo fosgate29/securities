@@ -77,6 +77,16 @@ contract("FullRedemption", accounts => {
     await securityToken.setRedemption(fullRedemption.address, { from: tokenOwner});
   });
 
+  it("should fail if no token holders are passed", async () => {
+    // setup and set redemption address
+    await paymentToken.approve(fullRedemption.address, 5000, { from : paymentOwner });
+    await fullRedemption.setup({ from: issuer });
+    await securityToken.setRedemption(fullRedemption.address, { from: tokenOwner});
+
+    // pass in no addresses
+    await shouldFail.reverting(fullRedemption.redeemTokens([], { from: issuer }));
+  });
+
   it("should redeem tokens for a token holder", async () => {
     // setup and set redemption address
     await paymentToken.approve(fullRedemption.address, 5000, { from : paymentOwner });

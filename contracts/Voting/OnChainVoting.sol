@@ -15,10 +15,10 @@ contract OnChainVoting is Ownable {
     // To be updated as the issuer verifies the vote's result on chain.
     // Mapping of hash(salt) for a user to their vote.
     // For a private vote, user's votes would be bytes not uint256
-    mapping(bytes32 => uint256) votes;
+    mapping(bytes32 => bytes32) public votes;
     uint256 votesCount = 0;
 
-    uint256 result;
+    string result;
     uint256 endTime;
 
     IERC20 public securityToken;
@@ -74,7 +74,7 @@ contract OnChainVoting is Ownable {
     */
     function submitUserVotes(
         bytes32[] memory _usersSaltHash, 
-        uint256[] memory _usersVote
+        bytes32[] memory _usersVote
     )
         public 
         onlyOwner
@@ -99,7 +99,7 @@ contract OnChainVoting is Ownable {
     */
     function submitVote(
         bytes32 _userSaltHash, 
-        uint256 _userVote
+        bytes32 _userVote
     )
         private
     {
@@ -115,14 +115,14 @@ contract OnChainVoting is Ownable {
 	* @param _result The result of the vote.  
     */
     function finalizeVote(
-        uint256 _result
+        string memory _result
     )
         public 
         onlyOwner
         isAfterEndTime 
     {
         require(submissionsCount == votesCount, "Must have correct number of submissions tallied to votes cast");
-        require(result == 0, "May only submit the result once");
+        require(bytes(result).length == 0, "May only submit the result once");
         result = _result;
     }
 

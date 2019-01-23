@@ -11,13 +11,12 @@ contract FixedPriceTender is Ownable {
     IERC20 paymentToken;
     IERC20 securityToken;
 
-    bool public isSetUp = false;
+    bool public paymentReady = false;
 
-
-    uint256 paymentPerSecurity; // The number of payment tokens offered per security token.
-    uint256 totalToRepurchase; // The maximum number of securities the owner() will repurchase.
-    uint256 offerEndTime; // The time by which holders must have opted in.
-    uint256 overallTotalTendered; // The total number of tokens opted in by holders
+    uint256 public paymentPerSecurity; // The number of payment tokens offered per security token.
+    uint256 public totalToRepurchase; // The maximum number of securities the owner() will repurchase.
+    uint256 public offerEndTime; // The time by which holders must have opted in.
+    uint256 public overallTotalTendered; // The total number of tokens opted in by holders
 
     // The following 2 variables are only used after offerEndTime to ensure people are paid first-come first-served
     uint256 nextTenderToAssess; // The index of the orderedHolders array that the repurchase has got to
@@ -43,8 +42,8 @@ contract FixedPriceTender is Ownable {
         _;
     }
 
-    modifier contractIsSetUp {
-        require(isSetUp, "The setup function has not been called");
+    modifier paymentTokensConfirmed {
+        require(paymentReady, "The payment tokens have not been confirmed");
         _;
     } 
 
@@ -82,15 +81,15 @@ contract FixedPriceTender is Ownable {
         transferOwnership(_issuer);
     }
 
-    function setup() public {
-        require(!isSetUp, "Setup has already happened");
+    function paymentTokensReady() public {
+        require(!paymentReady, "Payment has already been confirmed");
         // Check this contract has access to enough payment tokens.
         uint256 totalPaymentNeeded = totalToRepurchase * paymentPerSecurity;
         require(
             paymentToken.allowance(owner(), address(this)) >= totalPaymentNeeded,
             "Redemption contract does not have access to enough tokens"
         );
-        isSetUp = true;
+        paymentReady = true;
     }
 
     /**
@@ -108,6 +107,10 @@ contract FixedPriceTender is Ownable {
 	*/
     function updatePaymentPerSecurity(uint256 _newPaymentPerSecurity) external onlyOwner isBeforeEndTime {
         require(_newPaymentPerSecurity > 0, "New payment per security cannot be 0");
+        require(
+            paymentToken.allowance(owner(), address(this)) >= totalToRepurchase * _newPaymentPerSecurity,
+            "Redemption contract does not have access to enough tokens"
+        );
         paymentPerSecurity = _newPaymentPerSecurity;
     }
 
@@ -116,7 +119,12 @@ contract FixedPriceTender is Ownable {
     * @param _newTotalToRepurchase The new upper limit of tokens to repurchase.
 	*/
     function updateTotalToRepurchase(uint256 _newTotalToRepurchase) external onlyOwner isBeforeEndTime {
-        require(_newTotalToRepurchase >= 0, "New payment per security cannot be negative");
+        require(_newTotalToRepurchase >= 0, "New total number of tokens to repurchase cannot be negative");
+        require(_newTotalToRepurchase <= securityToken.totalSupply(), "Total to repurchase is larger than total token supply");
+        require(
+            paymentToken.allowance(owner(), address(this)) >= _newTotalToRepurchase * paymentPerSecurity,
+            "Redemption contract does not have access to enough tokens"
+        );
         totalToRepurchase = _newTotalToRepurchase;
     }
 
@@ -124,12 +132,13 @@ contract FixedPriceTender is Ownable {
 	* @dev Function to allow a security holder to opt into the offering.
     * @param _numberToTender The number of securities the sender would like to tender.
 	*/
-    function optInToTender(uint256 _numberToTender) external isBeforeEndTime {
+    function optInToTender(uint256 _numberToTender) external isBeforeEndTime paymentTokensConfirmed {
         require(_numberToTender > 0, "Must provide a number of securities to opt in");
         // Create a storage reference so the changes update the mapping
         HolderTender storage holderTender = tenders[msg.sender];
 
         // Check that this contract can control the specified number of tokens
+        // This will allow it to gain ownership of the tokens at the end of the function
         require(
             securityToken.allowance(msg.sender, address(this)) >= _numberToTender,
             "Holder has not approved contract to control securities"

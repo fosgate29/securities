@@ -15,7 +15,7 @@ contract FullRedemption is Ownable {
     bool public isSetUp = false;
 
     modifier contractIsSetUp {
-        require(isSetUp, "The setup contract has not been called");
+        require(isSetUp, "The setup function has not been called");
         _;
     } 
 
@@ -44,6 +44,7 @@ contract FullRedemption is Ownable {
     }
 
     function setup() public {
+        require(!isSetUp, "Setup has already happened");
         // Check this contract has access to enough payment tokens.
         uint256 totalPaymentNeeded = securityToken.totalSupply() * paymentPerSecurity;
         require(

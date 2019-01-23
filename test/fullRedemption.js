@@ -1,7 +1,5 @@
 const Promise = require("bluebird");
 const { shouldFail } = require("openzeppelin-test-helpers");
-// const latestTime = require("./helpers/latestTime");
-// import increaseTime, { duration } from "./helpers/increaseTime";
 
 web3.eth = Promise.promisifyAll(web3.eth);
 
@@ -60,6 +58,12 @@ contract("FullRedemption", accounts => {
     await fullRedemption.setup({ from: issuer });
     const setupBool = await fullRedemption.isSetUp.call();
     assert.isTrue(setupBool, "Setup was not successful");
+  });
+
+  it("should not allow the setup to be called again after succeeding", async () => {
+    await paymentToken.approve(fullRedemption.address, 5000, { from : paymentOwner });
+    await fullRedemption.setup({ from: issuer });
+    await shouldFail.reverting(fullRedemption.setup({ from: issuer }));   
   });
 
   it("should succeed not be possible to redeem tokens without having setup", async () => {

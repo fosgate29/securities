@@ -1,7 +1,5 @@
 const Promise = require("bluebird");
 const { shouldFail } = require("openzeppelin-test-helpers");
-// const latestTime = require("./helpers/latestTime");
-// import increaseTime, { duration } from "./helpers/increaseTime";
 
 web3.eth = Promise.promisifyAll(web3.eth);
 

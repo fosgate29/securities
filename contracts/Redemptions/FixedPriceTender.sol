@@ -11,6 +11,9 @@ contract FixedPriceTender is Ownable {
     IERC20 paymentToken;
     IERC20 securityToken;
 
+    bool public isSetUp = false;
+
+
     uint256 paymentPerSecurity; // The number of payment tokens offered per security token.
     uint256 totalToRepurchase; // The maximum number of securities the owner() will repurchase.
     uint256 offerEndTime; // The time by which holders must have opted in.
@@ -40,6 +43,12 @@ contract FixedPriceTender is Ownable {
         _;
     }
 
+    modifier contractIsSetUp {
+        require(isSetUp, "The setup function has not been called");
+        _;
+    } 
+
+
     /**
 	* @dev Constructor to initialize the contract.
     * @param _paymentPerSecurity Value to pay per security repurchased.
@@ -57,11 +66,11 @@ contract FixedPriceTender is Ownable {
         uint256 _totalToRepurchase,
         uint256 _offerEndTime
     ) public {
-        // Make sure the issuer has provided enough payment tokens.
-        require (
-            _paymentToken.allowance(_issuer, address(this)) >= _totalToRepurchase.mul(_paymentPerSecurity),
-            "The contract does not have access to enough payment tokens"
-        );
+        require(address(_paymentToken) != address(0), "Payment token contract required");
+        require(address(_securityToken) != address(0), "Security token contract required");
+        require(address(_issuer) != address(0), "Issuer address required");
+        require(_paymentPerSecurity > 0, "No payment amount provided");
+
         // Make sure enough tokens exist to repurchase.
         require(_totalToRepurchase <= _securityToken.totalSupply(), "Total to repurchase is larger than total token supply");
 
@@ -71,6 +80,17 @@ contract FixedPriceTender is Ownable {
         totalToRepurchase = _totalToRepurchase;
         offerEndTime = _offerEndTime;
         transferOwnership(_issuer);
+    }
+
+    function setup() public {
+        require(!isSetUp, "Setup has already happened");
+        // Check this contract has access to enough payment tokens.
+        uint256 totalPaymentNeeded = securityToken.totalSupply() * paymentPerSecurity;
+        require(
+            paymentToken.allowance(owner(), address(this)) >= totalPaymentNeeded,
+            "Redemption contract does not have access to enough tokens"
+        );
+        isSetUp = true;
     }
 
     /**

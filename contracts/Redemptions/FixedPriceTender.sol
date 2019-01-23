@@ -85,7 +85,7 @@ contract FixedPriceTender is Ownable {
     function setup() public {
         require(!isSetUp, "Setup has already happened");
         // Check this contract has access to enough payment tokens.
-        uint256 totalPaymentNeeded = securityToken.totalSupply() * paymentPerSecurity;
+        uint256 totalPaymentNeeded = totalToRepurchase * paymentPerSecurity;
         require(
             paymentToken.allowance(owner(), address(this)) >= totalPaymentNeeded,
             "Redemption contract does not have access to enough tokens"
